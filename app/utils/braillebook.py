@@ -19,7 +19,7 @@
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from io import BytesIO
-import fitz  # PyMuPDF
+import fitz # PyMuPDF
 from PIL import Image
 import io
 
@@ -97,7 +97,7 @@ braille_alphabet = {
     'k': '100010', 'l': '101010', 'm': '110010', 'n': '110110', 'o': '100110',
     'p': '111010', 'q': '111110', 'r': '101110', 's': '011010', 't': '011110',
     'u': '100011', 'v': '101011', 'w': '011101', 'x': '110011', 'y': '110111',
-    'z': '100111', ' ': '000000',
+    'z': '100111', ' ': '000000', # El espacio en braille es una celda vacía
 
     'á': '101111', 'é': '011011', 'í': '010010', 'ó': '010011', 'ú': '011111',
     'ñ': '110101'
@@ -216,8 +216,9 @@ def create_braille_pdf(text, mirror=False):
         if char == '\n':
             # Si encontramos un salto de línea explícito, forzamos un avance a la siguiente línea de braille
             # solo si la línea actual no está vacía o si es la primera línea (para evitar saltos dobles al inicio).
-            if num_cells_in_current_braille_line > 0 or current_braille_line_count == 0:
-                 move_to_next_braille_line()
+            # Esta condición asegura que un '\n' siempre avance la línea, incluso si es el primer carácter.
+            # Y que un segundo '\n' consecutivo genere una línea vacía.
+            move_to_next_braille_line()
             continue # Pasar al siguiente carácter
 
         # Lógica para avanzar a la siguiente línea si la actual está llena
@@ -241,7 +242,7 @@ def create_braille_pdf(text, mirror=False):
                 braille_binary = braille_numbers[char]
         elif char in braille_punctuation:
             braille_binary = braille_punctuation[char]
-        elif char.lower() in braille_alphabet:
+        elif char.lower() in braille_alphabet: # Manejo de minúsculas y caracteres acentuados
             braille_binary = braille_alphabet[char.lower()]
         # Si el carácter no se puede mapear, simplemente se ignora.
 
@@ -290,6 +291,8 @@ def pdf_to_image(pdf_file, page_number=0):
     Returns:
         BytesIO: Un objeto BytesIO que contiene la imagen PNG.
     """
+    # Asegúrate de que el buffer esté al inicio antes de leerlo
+    pdf_file.seek(0)
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     page = doc.load_page(page_number)
     pix = page.get_pixmap()
@@ -297,4 +300,5 @@ def pdf_to_image(pdf_file, page_number=0):
     img_bytes = io.BytesIO()
     img.save(img_bytes, format='PNG')
     img_bytes.seek(0)
+    doc.close() # Es buena práctica cerrar el documento
     return img_bytes
